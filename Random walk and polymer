@@ -1,0 +1,56 @@
+"""
+This code simulates a 1D polymer model using the freely-jointed chain (FJC) model.
+The model calculates the average chain length for different values of an external force (f) applied to the polymer.
+The simulation considers how the probability of moving to the right or left changes with the applied force.
+Results are visualized using a scatter plot with a trendline to show the relationship between the force and the average chain length.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Function to simulate the FJC model and calculate the average chain length
+def fjc_model_simulation(num_steps, f_values):
+    L_values = []  # To store the average chain length for each value of f
+
+    for f in f_values:
+        positions = np.zeros(num_steps + 1)  # Chain positions over time
+        
+        # Simulate the random walk with bias based on force f
+        for i in range(1, num_steps + 1):
+            if np.random.rand() < 0.5 + f:
+                step = 1  # Move to the right
+            else:
+                step = -1  # Move to the left
+            positions[i] = positions[i - 1] + step  # Update position
+
+        # Calculate the average chain length
+        average_length = 2 * np.max(positions)  # Left and right of the chain have symmetry 
+        L_values.append(average_length)
+
+    return L_values
+
+# Simulation parameters
+num_steps = 1000  # Number of random walk steps
+f_values = np.linspace(0, 0.5, 20)  # Different values of force f in a small range to prevent probability from leaving [0, 1]
+
+# Simulate the FJC model and store the average chain length for each value of f
+L_values = fjc_model_simulation(num_steps, f_values)
+
+# Plot the average chain length for different values of f
+plt.scatter(f_values, L_values, color='blue', label='Data Points')
+
+# Fit a polynomial trendline (e.g., degree 1 for a linear fit)
+coefficients = np.polyfit(f_values, L_values, 1)
+poly = np.poly1d(coefficients)
+trendline = poly(f_values)
+
+# Plot the trendline
+plt.plot(f_values, trendline, color='red', linestyle='-', label='Trendline')
+
+# Set plot labels and title
+plt.xlabel('Force (f)')
+plt.ylabel('Average Chain Length')
+plt.title('Average Chain Length vs. Different Force Values (f)')
+plt.legend()
+plt.grid(True)
+plt.show()
