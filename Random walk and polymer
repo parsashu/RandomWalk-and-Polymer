@@ -1,56 +1,96 @@
 """
-This code simulates a 1D polymer model using the freely-jointed chain (FJC) model.
-The model calculates the average chain length for different values of an external force (f) applied to the polymer.
-The simulation considers how the probability of moving to the right or left changes with the applied force.
-Results are visualized using a scatter plot with a trendline to show the relationship between the force and the average chain length.
+This script simulates a three-dimensional symmetric random walk of a polymer chain using the freely-jointed chain (FJC) model. 
+The simulation considers two scenarios: one with a fixed force applied on the x-axis (grid) and another where the force varies freely (free).
+The animation showcases how the chain's conformation evolves as the force changes, allowing for an exploration of different polymer sizes.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.animation import FuncAnimation
 
-# Function to simulate the FJC model and calculate the average chain length
-def fjc_model_simulation(num_steps, f_values):
-    L_values = []  # To store the average chain length for each value of f
+def fjc_model_simulation_grid(num_steps, f):
+    # Simulates the FJC model with a fixed force applied on the x-axis (grid)
+    path = np.array([[0, 0, 0]])
+    position = np.array([0, 0, 0])  # Chain positions over time 
 
-    for f in f_values:
-        positions = np.zeros(num_steps + 1)  # Chain positions over time
-        
-        # Simulate the random walk with bias based on force f
-        for i in range(1, num_steps + 1):
+    for _ in range(num_steps):
+        coordinate_probabbility = np.random.rand()
+
+        if 0 < coordinate_probabbility <= 1/3 + f:     # Force makes bias on choosing x-axis
             if np.random.rand() < 0.5 + f:
                 step = 1  # Move to the right
             else:
                 step = -1  # Move to the left
-            positions[i] = positions[i - 1] + step  # Update position
+            position[0] += step
 
-        # Calculate the average chain length
-        average_length = 2 * np.max(positions)  # Left and right of the chain have symmetry 
-        L_values.append(average_length)
+        elif 1/3 + f < coordinate_probabbility <= 2/3 + f/2:
+            step = np.random.choice([-1, 1])
+            position[1] += step
 
-    return L_values
+        elif 2/3 + f/2 < coordinate_probabbility <= 1:
+            step = np.random.choice([-1, 1])
+            position[2] += step
+
+        path = np.vstack([path, position.copy()])
+
+    return path
+
+def fjc_model_simulation_free(num_steps, f_values):
+    # Simulates the FJC model with a freely varying force
+    f = 2 * f_values
+    path = np.array([0.0, 0.0, 0.0])
+    position = np.array([0.0, 0.0, 0.0])  # Chain positions over time 
+
+    for _ in range(num_steps):
+        x = np.random.uniform(-1, 1) + f  
+        if x > 1:
+            x = 1
+        else:
+            pass  
+
+        max_y = (1 - x**2)**(0.5)
+        y = np.random.uniform(-max_y, max_y)
+
+        sign = np.random.choice([-1, 1])
+        z = sign * (1 - x**2 - y**2)**(0.5)
+
+        step_vector = np.array([x, y, z])
+        position += step_vector
+        path = np.vstack([path, position.copy()])
+
+    return path
 
 # Simulation parameters
-num_steps = 1000  # Number of random walk steps
-f_values = np.linspace(0, 0.5, 20)  # Different values of force f in a small range to prevent probability from leaving [0, 1]
+num_steps = 100  # Number of random walk steps
+f_values = np.linspace(0, 1, 30)  # Different values of force f
 
-# Simulate the FJC model and store the average chain length for each value of f
-L_values = fjc_model_simulation(num_steps, f_values)
+# Create a larger figure and axis
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection='3d')
+ax.set_title("Three-dimensional Symmetric Random Walk")
+ax.set_xlabel("X Position")
+ax.set_ylabel("Y Position")
+ax.set_zlabel("Z Position")
 
-# Plot the average chain length for different values of f
-plt.scatter(f_values, L_values, color='blue', label='Data Points')
+# Set the limits for each axis to zoom out
+ax.set_xlim([-1, 80])  # Adjust the values as needed
+ax.set_ylim([-5, 10])  # Adjust the values as needed
+ax.set_zlim([-5, 10])  # Adjust the values as needed
 
-# Fit a polynomial trendline (e.g., degree 1 for a linear fit)
-coefficients = np.polyfit(f_values, L_values, 1)
-poly = np.poly1d(coefficients)
-trendline = poly(f_values)
+# Initialize the line plot (empty for now)
+line, = ax.plot([], [], [], marker='o', markersize=2)
 
-# Plot the trendline
-plt.plot(f_values, trendline, color='red', linestyle='-', label='Trendline')
+# Update function for animation
+def update(frame):
+    f_value = f_values[frame]
+    path = fjc_model_simulation_free(num_steps, f_value)
+    line.set_data(path[:, 0], path[:, 1])
+    line.set_3d_properties(path[:, 2])
+    ax.set_title("Changing polymer size by changing force (free)")
+    return line,
 
-# Set plot labels and title
-plt.xlabel('Force (f)')
-plt.ylabel('Average Chain Length')
-plt.title('Average Chain Length vs. Different Force Values (f)')
-plt.legend()
-plt.grid(True)
+# Create the animation
+ani = FuncAnimation(fig, update, frames=len(f_values), interval=500, blit=True)
+
 plt.show()
